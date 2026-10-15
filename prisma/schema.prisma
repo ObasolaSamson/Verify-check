@@ -1,0 +1,1190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum RoleKey {
+  CUSTOMER
+  AGENT
+  FIELD_OFFICER
+  SURVEYOR
+  LAWYER
+  ADMIN
+}
+
+enum OtpChannel {
+  EMAIL
+  SMS
+}
+
+enum CaseStatus {
+  PENDING_PAYMENT
+  PAID
+  ASSIGNED
+  IN_PROGRESS
+  UNDER_REVIEW
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+  REFUNDED
+}
+
+enum CheckType {
+  REGISTRY_SEARCH
+  SURVEY_CHARTING
+  GAZETTE_CHECK
+  SITE_VISIT
+  AGENT_CHECK
+  ENCUMBRANCE_SEARCH
+  LITIGATION_SEARCH
+  COMMUNITY_CHECK
+  LEGAL_REVIEW
+}
+
+enum TaskStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  SUBMITTED
+  CHANGES_REQUESTED
+  APPROVED
+  SKIPPED
+  CANCELLED
+}
+
+enum AssignmentMode {
+  MANUAL
+  AUTO
+}
+
+enum TitleDocumentType {
+  CERTIFICATE_OF_OCCUPANCY
+  GOVERNORS_CONSENT
+  DEED_OF_ASSIGNMENT
+  DEED_OF_GIFT
+  DEED_OF_LEASE
+  DEED_OF_MORTGAGE
+  REGISTERED_CONVEYANCE
+  GAZETTE
+  SURVEY_PLAN
+  LETTER_OF_ALLOCATION
+  CUSTOMARY_RIGHT_OF_OCCUPANCY
+  COURT_JUDGMENT
+  POWER_OF_ATTORNEY
+  OTHER
+}
+
+enum ContactRelationship {
+  SELLER
+  AGENT
+  FAMILY_HEAD
+  DEVELOPER
+  LAWYER
+  OTHER
+}
+
+enum ChartingResult {
+  FREE
+  GOVT_ACQUISITION
+  COMMITTED
+  EXCISED
+  GAZETTED
+  SETBACK
+  OTHER
+}
+
+enum RiskRating {
+  LOW
+  CAUTION
+  HIGH
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  ABANDONED
+  REFUNDED
+}
+
+enum FilePurpose {
+  TITLE_DOCUMENT
+  EVIDENCE
+  SITE_PHOTO
+  AGENT_PHOTO
+  LICENCE_CERTIFICATE
+  LISTING_PHOTO
+  REPORT_PDF
+}
+
+enum GpsSource {
+  BROWSER
+  EXIF
+}
+
+enum NoteVisibility {
+  INTERNAL
+  CUSTOMER
+}
+
+enum RegistryKind {
+  LAND_REGISTRY
+  SURVEYOR_GENERAL
+  AGIS
+  OTHER
+}
+
+enum AgentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum LicenceType {
+  LASRERA
+  ESVARBON
+  OTHER
+}
+
+enum KycProviderName {
+  MOCK
+  PREMBLY
+  DOJAH
+  SMILE_ID
+}
+
+enum KycCheckType {
+  NIN
+  BVN
+  CAC
+}
+
+enum KycStatus {
+  PENDING
+  PASSED
+  FAILED
+  ERROR
+}
+
+enum ListingStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ReviewTargetType {
+  AGENT
+  RENTAL
+}
+
+enum ReviewStatus {
+  PUBLISHED
+  UNDER_MODERATION
+  REMOVED_POLICY
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  UPHELD
+  DISMISSED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum DataRequestType {
+  EXPORT
+  DELETE
+}
+
+enum DataRequestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+enum AuditAction {
+  CASE_STATUS_CHANGED
+  TASK_STATUS_CHANGED
+  FILE_UPLOADED
+  FILE_VIEWED
+  REPORT_ISSUED
+  REPORT_VIEWED
+  AGENT_STATUS_CHANGED
+  PAYMENT_UPDATED
+  USER_ROLE_CHANGED
+  DATA_EXPORTED
+  DATA_DELETION_REQUESTED
+  LOGIN
+}
+
+// ---------------------------------------------------------------------------
+// Auth and people
+// ---------------------------------------------------------------------------
+
+model User {
+  id                   String    @id @default(cuid())
+  name                 String?
+  email                String?   @unique
+  emailVerified        DateTime?
+  phone                String?   @unique
+  phoneVerified        DateTime?
+  image                String?
+  acceptedTermsVersion String?
+  acceptedTermsAt      DateTime?
+  anonymizedAt         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  otpChallenges OtpChallenge[]
+
+  userRoles    UserRole[] @relation("UserRoles")
+  rolesGranted UserRole[] @relation("RolesGranted")
+
+  staffProfile StaffProfile?
+  agentProfile AgentProfile?
+
+  consents     ConsentRecord[]
+  dataRequests DataSubjectRequest[]
+
+  properties    Property[]
+  customerCases VerificationCase[] @relation("CaseCustomer")
+  managedCases  VerificationCase[] @relation("CaseManager")
+
+  assignedTasks   CaseTask[] @relation("TaskAssignee")
+  tasksAssignedBy CaseTask[] @relation("TaskAssigner")
+  taskNotes       TaskNote[]
+  caseEvents      CaseEvent[]
+  uploadedFiles   StoredFile[]
+  evidenceUploads Evidence[]
+  sitePhotos      SitePhoto[]
+  payments        Payment[]
+  legalReviews    LegalReview[]
+  reportsReviewed Report[]   @relation("ReportReviewer")
+
+  reviewsWritten       Review[]
+  reviewReplies        ReviewReply[]
+  reviewReportsFiled   ReviewReport[] @relation("ReviewReporter")
+  reviewReportsHandled ReviewReport[] @relation("ReviewReportHandler")
+  fraudReportsFiled    FraudReport[]  @relation("FraudReporter")
+  fraudReportsHandled  FraudReport[]  @relation("FraudHandler")
+  agentsReviewed       AgentProfile[] @relation("AgentReviewer")
+
+  notifications Notification[]
+  auditLogs     AuditLog[]
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?  @db.Text
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model OtpChallenge {
+  id          String     @id @default(cuid())
+  userId      String?
+  channel     OtpChannel
+  destination String
+  codeHash    String
+  expiresAt   DateTime
+  attempts    Int        @default(0)
+  consumedAt  DateTime?
+  createdAt   DateTime   @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([destination, createdAt])
+}
+
+model Role {
+  id    String     @id @default(cuid())
+  key   RoleKey    @unique
+  label String
+  users UserRole[]
+}
+
+model UserRole {
+  userId       String
+  roleId       String
+  assignedById String?
+  assignedAt   DateTime @default(now())
+
+  user       User  @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  role       Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedBy User? @relation("RolesGranted", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model StaffProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  surconNumber String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  states State[]
+}
+
+// ---------------------------------------------------------------------------
+// Geography. State decides registries, document types, and fees.
+// ---------------------------------------------------------------------------
+
+model State {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  slug      String   @unique
+  active    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lgas           Lga[]
+  registries     RegistryOffice[]
+  documentTypes  StateDocumentType[]
+  tierFees       StateTierFee[]
+  properties     Property[]
+  listings       RentalListing[]
+  staffProfiles  StaffProfile[]
+  agentProfiles  AgentProfile[]
+}
+
+model Lga {
+  id      String @id @default(cuid())
+  stateId String
+  name    String
+  slug    String
+
+  state      State             @relation(fields: [stateId], references: [id])
+  properties Property[]
+  listings   RentalListing[]
+
+  @@unique([id, stateId])
+  @@unique([stateId, slug])
+  @@index([stateId])
+}
+
+model RegistryOffice {
+  id        String       @id @default(cuid())
+  stateId   String
+  name      String
+  address   String
+  kind      RegistryKind
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  state    State            @relation(fields: [stateId], references: [id])
+  searches RegistrySearch[]
+
+  @@index([stateId])
+}
+
+model StateDocumentType {
+  stateId      String
+  documentType TitleDocumentType
+  active       Boolean           @default(true)
+
+  state State @relation(fields: [stateId], references: [id], onDelete: Cascade)
+
+  @@id([stateId, documentType])
+}
+
+// ---------------------------------------------------------------------------
+// Tiers. Checklist template, not hardcoded features.
+// ---------------------------------------------------------------------------
+
+model Tier {
+  id                  String   @id @default(cuid())
+  slug                String   @unique
+  name                String
+  description         String   @db.Text
+  priceKobo           Int
+  turnaroundMinDays   Int
+  turnaroundMaxDays   Int
+  isPriority          Boolean  @default(false)
+  includesCaseManager Boolean  @default(false)
+  active              Boolean  @default(true)
+  sortOrder           Int
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  checks TierCheckTemplate[]
+  fees   StateTierFee[]
+  cases  VerificationCase[]
+}
+
+model TierCheckTemplate {
+  id           String    @id @default(cuid())
+  tierId       String
+  checkType    CheckType
+  assigneeRole RoleKey
+  title        String
+  description  String    @db.Text
+  sortOrder    Int
+  required     Boolean   @default(true)
+  /// Zod-checked. Example: { "opinionDepth": "summary" | "full" }
+  config       Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tier  Tier       @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  tasks CaseTask[]
+
+  @@index([tierId])
+}
+
+model StateTierFee {
+  stateId           String
+  tierId            String
+  priceKobo         Int
+  turnaroundMinDays Int
+  turnaroundMaxDays Int
+  active            Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+
+  state State @relation(fields: [stateId], references: [id])
+  tier  Tier  @relation(fields: [tierId], references: [id])
+
+  @@id([stateId, tierId])
+}
+
+/// Incremented with UPDATE ... RETURNING inside a transaction.
+model CaseCounter {
+  stateCode String
+  year      Int
+  lastValue Int    @default(0)
+
+  @@id([stateCode, year])
+}
+
+// ---------------------------------------------------------------------------
+// Verification
+// ---------------------------------------------------------------------------
+
+model Property {
+  id          String   @id @default(cuid())
+  createdById String
+  name        String?
+  description String?  @db.Text
+  addressLine String
+  stateId     String
+  lgaId       String
+  estateName  String?
+  landmark    String?
+  latitude    Decimal? @db.Decimal(10, 7)
+  longitude   Decimal? @db.Decimal(10, 7)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User               @relation(fields: [createdById], references: [id])
+  state     State              @relation(fields: [stateId], references: [id])
+  lga       Lga                @relation(fields: [lgaId, stateId], references: [id, stateId])
+  cases     VerificationCase[]
+
+  @@index([createdById])
+  @@index([stateId])
+}
+
+model VerificationCase {
+  id                       String              @id @default(cuid())
+  code                     String              @unique
+  customerId               String
+  propertyId               String
+  tierId                   String
+  status                   CaseStatus          @default(PENDING_PAYMENT)
+  statusBeforeHold         CaseStatus?
+  wizardStep               Int                 @default(1)
+  submittedAt              DateTime?
+  priceKobo                Int
+  currency                 String              @default("NGN")
+  turnaroundMinDays        Int
+  turnaroundMaxDays        Int
+  contactName              String
+  contactPhone             String
+  contactEmail             String
+  contactRelationship      ContactRelationship
+  contactRelationshipOther String?
+  relatedAgentId           String?
+  listingId                String?
+  caseManagerId            String?
+  locationAlert            Boolean             @default(false)
+  holdReason               String?
+  cancelReason             String?
+  consentGrantedAt         DateTime?
+  paidAt                   DateTime?
+  completedAt              DateTime?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+
+  customer     User           @relation("CaseCustomer", fields: [customerId], references: [id])
+  property     Property       @relation(fields: [propertyId], references: [id])
+  tier         Tier           @relation(fields: [tierId], references: [id])
+  relatedAgent AgentProfile?  @relation("CaseAgent", fields: [relatedAgentId], references: [id])
+  listing      RentalListing? @relation(fields: [listingId], references: [id])
+  caseManager  User?          @relation("CaseManager", fields: [caseManagerId], references: [id])
+
+  documents     TitleDocument[]
+  tasks         CaseTask[]
+  events        CaseEvent[]
+  payments      Payment[]
+  sitePhotos    SitePhoto[]
+  report        Report?
+  notifications Notification[]
+
+  @@index([customerId, status])
+  @@index([status])
+  @@index([relatedAgentId])
+  @@index([listingId])
+}
+
+model TitleDocument {
+  id                 String            @id @default(cuid())
+  caseId             String
+  documentType       TitleDocumentType
+  otherTypeLabel     String?
+  isGlobalCofO       Boolean           @default(false)
+  registrationNumber String?
+  volume             String?
+  page               String?
+  fileNumber         String?
+  issuedOn           DateTime?         @db.Date
+  nameOnDocument     String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  case  VerificationCase    @relation(fields: [caseId], references: [id])
+  files TitleDocumentFile[]
+
+  @@index([caseId])
+}
+
+model TitleDocumentFile {
+  id              String    @id @default(cuid())
+  titleDocumentId String
+  fileId          String
+  supersededAt    DateTime?
+  createdAt       DateTime  @default(now())
+
+  titleDocument TitleDocument @relation(fields: [titleDocumentId], references: [id])
+  file          StoredFile    @relation(fields: [fileId], references: [id])
+
+  @@index([titleDocumentId])
+}
+
+model CaseTask {
+  id              String         @id @default(cuid())
+  caseId          String
+  templateId      String?
+  checkType       CheckType
+  assigneeRole    RoleKey
+  assignmentMode  AssignmentMode @default(MANUAL)
+  assigneeId      String?
+  assignedById    String?
+  status          TaskStatus     @default(PENDING)
+  sortOrder       Int
+  title           String
+  /// Safe line shown on the customer timeline. Internal notes never go here.
+  customerSummary String?        @db.Text
+  dueOn           DateTime?
+  startedAt       DateTime?
+  submittedAt     DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  case       VerificationCase   @relation(fields: [caseId], references: [id])
+  template   TierCheckTemplate? @relation(fields: [templateId], references: [id])
+  assignee   User?              @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assignedBy User?              @relation("TaskAssigner", fields: [assignedById], references: [id])
+
+  notes          TaskNote[]
+  finding        TaskFinding?
+  registrySearch RegistrySearch?
+  surveyCharting SurveyCharting?
+  legalReview    LegalReview?
+  evidence       Evidence[]
+  sitePhotos     SitePhoto[]
+
+  @@index([caseId])
+  @@index([assigneeId, status])
+  @@index([templateId])
+}
+
+model TaskNote {
+  id         String         @id @default(cuid())
+  taskId     String
+  authorId   String
+  body       String         @db.Text
+  visibility NoteVisibility @default(INTERNAL)
+  createdAt  DateTime       @default(now())
+
+  task   CaseTask @relation(fields: [taskId], references: [id])
+  author User     @relation(fields: [authorId], references: [id])
+
+  @@index([taskId, createdAt])
+}
+
+/// Generic result for gazette, agent, encumbrance, litigation, and community checks.
+/// Registry, survey, and legal review use their own tables.
+model TaskFinding {
+  id        String   @id @default(cuid())
+  taskId    String   @unique
+  summary   String?  @db.Text
+  data      Json?
+  updatedAt DateTime @updatedAt
+
+  task CaseTask @relation(fields: [taskId], references: [id])
+}
+
+model RegistrySearch {
+  id                  String    @id @default(cuid())
+  taskId              String    @unique
+  registryOfficeId    String
+  searchedOn          DateTime?
+  receiptNumber       String?
+  isRegistered        Boolean?
+  registeredOwner     String?
+  registrationDetails String?   @db.Text
+  findings            String?   @db.Text
+  updatedAt           DateTime  @updatedAt
+
+  task     CaseTask       @relation(fields: [taskId], references: [id])
+  registry RegistryOffice @relation(fields: [registryOfficeId], references: [id])
+}
+
+model SurveyCharting {
+  id               String          @id @default(cuid())
+  taskId           String          @unique
+  surveyPlanNumber String?
+  coordinates      Json?
+  result           ChartingResult?
+  resultOther      String?
+  findings         String?         @db.Text
+  reportFileId     String?
+  updatedAt        DateTime        @updatedAt
+
+  task       CaseTask    @relation(fields: [taskId], references: [id])
+  reportFile StoredFile? @relation("ChartingReport", fields: [reportFileId], references: [id])
+}
+
+model LegalReview {
+  id              String     @id @default(cuid())
+  taskId          String     @unique
+  reviewerId      String
+  riskRating      RiskRating
+  summary         String     @db.Text
+  recommendations String     @db.Text
+  opinion         String     @db.Text
+  signedAt        DateTime?
+  updatedAt       DateTime   @updatedAt
+
+  task     CaseTask @relation(fields: [taskId], references: [id])
+  reviewer User     @relation(fields: [reviewerId], references: [id])
+}
+
+model CaseEvent {
+  id              String      @id @default(cuid())
+  caseId          String
+  actorId         String?
+  status          CaseStatus?
+  title           String
+  detail          String?
+  customerVisible Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+
+  case  VerificationCase @relation(fields: [caseId], references: [id])
+  actor User?            @relation(fields: [actorId], references: [id])
+
+  @@index([caseId, createdAt])
+}
+
+model StoredFile {
+  id             String      @id @default(cuid())
+  purpose        FilePurpose
+  bucket         String
+  objectKey      String      @unique
+  mimeType       String
+  sizeBytes      Int
+  originalName   String
+  sha256         String?
+  uploadedById   String
+  retentionUntil DateTime?
+  createdAt      DateTime    @default(now())
+
+  uploadedBy User @relation(fields: [uploadedById], references: [id])
+
+  titleDocumentFiles TitleDocumentFile[]
+  evidence           Evidence[]
+  sitePhotos         SitePhoto[]
+  agentPhotos        AgentProfile[]  @relation("AgentPhoto")
+  licenceFiles       AgentLicence[]  @relation("LicenceFile")
+  listingPhotos      ListingPhoto[]
+  reports            Report[]         @relation("ReportPdf")
+  chartingReports    SurveyCharting[] @relation("ChartingReport")
+
+  @@index([uploadedById])
+}
+
+model Evidence {
+  id           String   @id @default(cuid())
+  taskId       String
+  fileId       String
+  caption      String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  task       CaseTask   @relation(fields: [taskId], references: [id])
+  file       StoredFile @relation(fields: [fileId], references: [id])
+  uploadedBy User       @relation(fields: [uploadedById], references: [id])
+
+  @@index([taskId])
+}
+
+model SitePhoto {
+  id                    String    @id @default(cuid())
+  caseId                String
+  taskId                String
+  fileId                String
+  latitude              Decimal   @db.Decimal(10, 7)
+  longitude             Decimal   @db.Decimal(10, 7)
+  accuracyMeters        Float?
+  gpsSource             GpsSource
+  exifLatitude          Decimal?  @db.Decimal(10, 7)
+  exifLongitude         Decimal?  @db.Decimal(10, 7)
+  exif                  Json?
+  capturedAt            DateTime
+  distanceFromPinMeters Float?
+  outsidePinRadius      Boolean   @default(false)
+  uploadedById          String
+  createdAt             DateTime  @default(now())
+
+  case       VerificationCase @relation(fields: [caseId], references: [id])
+  task       CaseTask         @relation(fields: [taskId], references: [id])
+  file       StoredFile       @relation(fields: [fileId], references: [id])
+  uploadedBy User             @relation(fields: [uploadedById], references: [id])
+
+  @@index([caseId])
+  @@index([taskId])
+}
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+
+model Payment {
+  id                 String        @id @default(cuid())
+  caseId             String
+  userId             String
+  paystackReference  String        @unique
+  paystackAccessCode String?
+  amountKobo         Int
+  currency           String        @default("NGN")
+  status             PaymentStatus @default(PENDING)
+  channel            String?
+  paidAt             DateTime?
+  failureReason      String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  case VerificationCase @relation(fields: [caseId], references: [id])
+  user User             @relation(fields: [userId], references: [id])
+
+  @@index([caseId])
+  @@index([userId])
+}
+
+model PaystackEvent {
+  id          String    @id @default(cuid())
+  eventKey    String    @unique
+  eventType   String
+  reference   String?
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([reference])
+}
+
+// ---------------------------------------------------------------------------
+// Report. publicCode is what the QR code encodes. It is not the case code.
+// ---------------------------------------------------------------------------
+
+model Report {
+  id                String     @id @default(cuid())
+  caseId            String     @unique
+  publicCode        String     @unique
+  riskRating        RiskRating
+  summary           String     @db.Text
+  recommendations   String     @db.Text
+  opinion           String     @db.Text
+  /// Full findings frozen at issue time. Authorized viewers only.
+  snapshot          Json
+  /// Redacted text for /verify-report/[code]. No address, names, or documents.
+  publicSummary     String
+  disclaimerVersion String
+  reviewerId        String
+  reviewerName      String
+  issuedAt          DateTime
+  pdfFileId         String?
+  createdAt         DateTime   @default(now())
+
+  case     VerificationCase @relation(fields: [caseId], references: [id])
+  reviewer User             @relation("ReportReviewer", fields: [reviewerId], references: [id])
+  pdfFile  StoredFile?      @relation("ReportPdf", fields: [pdfFileId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Agents, KYC, rentals, reviews
+// ---------------------------------------------------------------------------
+
+model AgentProfile {
+  id            String      @id @default(cuid())
+  userId        String      @unique
+  slug          String      @unique
+  fullName      String
+  photoFileId   String?
+  phone         String
+  email         String
+  companyName   String?
+  cacNumber     String?
+  ninLast4      String?
+  ninCiphertext String?     @db.Text
+  bvnLast4      String?
+  bvnCiphertext String?     @db.Text
+  officeAddress String
+  status        AgentStatus @default(PENDING)
+  statusReason  String?     @db.Text
+  reviewedById  String?
+  verifiedAt    DateTime?
+  ratingAverage Decimal     @default(0) @db.Decimal(3, 2)
+  ratingCount   Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user            User               @relation(fields: [userId], references: [id])
+  photo           StoredFile?        @relation("AgentPhoto", fields: [photoFileId], references: [id])
+  reviewedBy      User?              @relation("AgentReviewer", fields: [reviewedById], references: [id])
+  operatingStates State[]
+  licences        AgentLicence[]
+  kycChecks       KycCheck[]
+  listings        RentalListing[]
+  reviews         Review[]
+  fraudReports    FraudReport[]
+  cases           VerificationCase[] @relation("CaseAgent")
+
+  @@index([phone])
+  @@index([status])
+}
+
+model AgentLicence {
+  id                String      @id @default(cuid())
+  agentProfileId    String
+  type              LicenceType
+  number            String
+  stateId           String?
+  otherLabel        String?
+  certificateFileId String?
+  createdAt         DateTime    @default(now())
+
+  agent           AgentProfile @relation(fields: [agentProfileId], references: [id])
+  certificateFile StoredFile?  @relation("LicenceFile", fields: [certificateFileId], references: [id])
+
+  @@index([number])
+  @@index([agentProfileId])
+}
+
+model KycCheck {
+  id             String          @id @default(cuid())
+  agentProfileId String
+  provider       KycProviderName
+  checkType      KycCheckType
+  status         KycStatus
+  providerRef    String?
+  matchedName    String?
+  subjectLast4   String?
+  /// Provider payload with identity numbers removed before save.
+  result         Json?
+  createdAt      DateTime        @default(now())
+
+  agent AgentProfile @relation(fields: [agentProfileId], references: [id])
+
+  @@index([agentProfileId])
+}
+
+model RentalListing {
+  id               String        @id @default(cuid())
+  agentProfileId   String
+  slug             String        @unique
+  title            String
+  description      String        @db.Text
+  addressLine      String
+  estateName       String?
+  stateId          String
+  lgaId            String
+  priceKoboPerYear Int
+  bedrooms         Int
+  status           ListingStatus @default(DRAFT)
+  ratingAverage    Decimal       @default(0) @db.Decimal(3, 2)
+  ratingCount      Int           @default(0)
+  publishedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  agent   AgentProfile       @relation(fields: [agentProfileId], references: [id])
+  state   State              @relation(fields: [stateId], references: [id])
+  lga     Lga                @relation(fields: [lgaId, stateId], references: [id, stateId])
+  photos  ListingPhoto[]
+  reviews Review[]
+  cases   VerificationCase[]
+
+  @@index([stateId, status])
+  @@index([agentProfileId])
+}
+
+model ListingPhoto {
+  id        String  @id @default(cuid())
+  listingId String
+  fileId    String
+  sortOrder Int
+  caption   String?
+
+  listing RentalListing @relation(fields: [listingId], references: [id])
+  file    StoredFile    @relation(fields: [fileId], references: [id])
+
+  @@index([listingId])
+}
+
+model Review {
+  id                 String           @id @default(cuid())
+  authorId           String
+  targetType         ReviewTargetType
+  /// "agent:{id}" or "rental:{id}". Enforces one review per user per entity.
+  targetKey          String
+  agentProfileId     String?
+  rentalListingId    String?
+  overallRating      Int
+  body               String           @db.Text
+  verifiedEngagement Boolean          @default(false)
+  status             ReviewStatus     @default(PUBLISHED)
+  editableUntil      DateTime
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  author    User             @relation(fields: [authorId], references: [id])
+  agent     AgentProfile?    @relation(fields: [agentProfileId], references: [id])
+  rental    RentalListing?   @relation(fields: [rentalListingId], references: [id])
+  scores    ReviewScore[]
+  revisions ReviewRevision[]
+  reply     ReviewReply?
+  reports   ReviewReport[]
+
+  @@unique([authorId, targetKey])
+  @@index([agentProfileId])
+  @@index([rentalListingId])
+}
+
+model ReviewScore {
+  id       String @id @default(cuid())
+  reviewId String
+  category String
+  score    Int
+
+  review Review @relation(fields: [reviewId], references: [id])
+
+  @@unique([reviewId, category])
+}
+
+model ReviewRevision {
+  id        String   @id @default(cuid())
+  reviewId  String
+  body      String   @db.Text
+  ratings   Json
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id])
+
+  @@index([reviewId, createdAt])
+}
+
+model ReviewReply {
+  id        String   @id @default(cuid())
+  reviewId  String   @unique
+  authorId  String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  review Review @relation(fields: [reviewId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+}
+
+model ReviewReport {
+  id          String       @id @default(cuid())
+  reviewId    String
+  reporterId  String
+  reason      String       @db.Text
+  status      ReportStatus @default(OPEN)
+  resolution  String?      @db.Text
+  handledById String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  review    Review @relation(fields: [reviewId], references: [id])
+  reporter  User   @relation("ReviewReporter", fields: [reporterId], references: [id])
+  handledBy User?  @relation("ReviewReportHandler", fields: [handledById], references: [id])
+
+  @@index([status])
+}
+
+model FraudReport {
+  id             String       @id @default(cuid())
+  reporterId     String?
+  agentProfileId String?
+  agentName      String?
+  agentPhone     String?
+  licenceNumber  String?
+  description    String       @db.Text
+  status         ReportStatus @default(OPEN)
+  resolution     String?      @db.Text
+  handledById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  reporter  User?         @relation("FraudReporter", fields: [reporterId], references: [id])
+  agent     AgentProfile? @relation(fields: [agentProfileId], references: [id])
+  handledBy User?         @relation("FraudHandler", fields: [handledById], references: [id])
+
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Compliance and notifications
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id                String              @id @default(cuid())
+  userId            String
+  caseId            String?
+  channel           NotificationChannel
+  type              String
+  destination       String
+  status            NotificationStatus  @default(PENDING)
+  providerMessageId String?
+  error             String?             @db.Text
+  createdAt         DateTime            @default(now())
+  sentAt            DateTime?
+
+  user User              @relation(fields: [userId], references: [id])
+  case VerificationCase? @relation(fields: [caseId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([caseId])
+}
+
+model ConsentRecord {
+  id            String   @id @default(cuid())
+  userId        String
+  purpose       String
+  policyVersion String
+  granted       Boolean
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model DataSubjectRequest {
+  id          String            @id @default(cuid())
+  userId      String
+  type        DataRequestType
+  status      DataRequestStatus @default(PENDING)
+  note        String?           @db.Text
+  requestedAt DateTime          @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([status])
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String?
+  action     AuditAction
+  entityType String
+  entityId   String
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+}
