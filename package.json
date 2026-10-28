@@ -11,7 +11,9 @@
     "db:up": "tsx scripts/dev-db.ts",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "tsx --env-file=.env prisma/seed.ts",
+    "db:delete-test-users": "tsx --env-file=.env scripts/delete-test-users.ts",
+    "db:seed:prod": "tsx --env-file=.env prisma/seed.ts --reference-only",
     "db:reset": "prisma migrate reset --force",
     "smoke": "tsx --conditions=react-server --env-file=.env scripts/smoke-phase1.ts"
   },

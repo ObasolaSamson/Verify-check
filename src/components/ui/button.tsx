@@ -2,6 +2,7 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal",
@@ -29,8 +30,32 @@ export function Button({
   variant,
   size,
   asChild = false,
+  loading = false,
+  children,
+  disabled,
   ...props
-}: React.ComponentProps<"button"> & VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot : "button";
-  return <Comp className={cn(buttonVariants({ variant, size, className }))} {...props} />;
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+    /** Shows a spinner, disables the button, and tells screen readers it is busy. */
+    loading?: boolean;
+  }) {
+  if (asChild) {
+    return (
+      <Slot className={cn(buttonVariants({ variant, size, className }))} {...props}>
+        {children}
+      </Slot>
+    );
+  }
+  return (
+    <button
+      className={cn(buttonVariants({ variant, size, className }), loading && "disabled:cursor-progress disabled:opacity-80")}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      {...props}
+    >
+      {loading ? <Spinner /> : null}
+      {children}
+    </button>
+  );
 }

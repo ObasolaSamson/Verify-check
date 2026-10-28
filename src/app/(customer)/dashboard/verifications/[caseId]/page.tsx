@@ -5,7 +5,7 @@ import { CaseError, getOwnedCase } from "@/server/cases/requests";
 import { devPaymentAllowed, paystackConfigured } from "@/server/paystack";
 import { startPaymentAction, simulateDevPaymentAction } from "@/features/payments/actions";
 import { StatusBadge } from "@/features/cases/status-badge";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { DOCUMENT_LABELS, RELATIONSHIP_LABELS } from "@/lib/labels";
 import { formatNairaFromKobo, turnaroundLabel } from "@/lib/money";
 import { maskPhone } from "@/lib/phone";
@@ -125,16 +125,16 @@ export default async function CaseDetailPage({
             <div className="mt-4 space-y-3">
               <form action={startPaymentAction}>
                 <input type="hidden" name="caseId" value={row.id} />
-                <Button type="submit" className="w-full" disabled={!paystackConfigured()}>
+                <SubmitButton className="w-full" disabled={!paystackConfigured()} pendingText="Taking you to Paystack…">
                   Pay with Paystack
-                </Button>
+                </SubmitButton>
               </form>
               {devPaymentAllowed() ? (
                 <form action={simulateDevPaymentAction}>
                   <input type="hidden" name="caseId" value={row.id} />
-                  <Button type="submit" variant="outline" className="w-full">
+                  <SubmitButton variant="outline" className="w-full" pendingText="Marking as paid…">
                     Mark paid (development only)
-                  </Button>
+                  </SubmitButton>
                 </form>
               ) : null}
               {pendingAttempt ? <p className="text-xs text-ink-3">A payment was started. If you paid, this page updates once Paystack confirms it.</p> : null}

@@ -4,7 +4,7 @@ import "@fontsource-variable/source-serif-4/wght.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "TitleCheck", template: "%s | TitleCheck" },
+  title: { default: "VerifyTitle Nigeria", template: "%s | VerifyTitle Nigeria" },
   description: "Verify a Nigerian land title before you pay. Field officers, surveyors, and lawyers search the registry for you.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"),
 };

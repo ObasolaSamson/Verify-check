@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Spinner } from "@/components/ui/spinner";
 import { DOCUMENT_LABELS, RELATIONSHIP_LABELS } from "@/lib/labels";
 import { formatNairaFromKobo, turnaroundLabel } from "@/lib/money";
 import {
@@ -31,7 +32,15 @@ import {
 
 const LocationPicker = dynamic(
   () => import("@/components/map/location-picker").then((mod) => mod.LocationPicker),
-  { ssr: false, loading: () => <div className="h-72 rounded-md border border-line bg-paper" /> },
+  {
+    ssr: false,
+    loading: () => (
+      <div role="status" className="flex h-72 items-center justify-center gap-2 rounded-md border border-line bg-paper text-sm text-ink-2">
+        <Spinner className="text-seal" />
+        Loading map…
+      </div>
+    ),
+  },
 );
 
 const STEPS = ["Property", "Contact", "Documents", "Files", "Tier", "Review"];
@@ -118,6 +127,7 @@ export function VerificationWizard({ states, initial }: { states: WizardState[];
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [latitude, setLatitude] = useState<number | undefined>(initial?.property.latitude ?? undefined);
   const [longitude, setLongitude] = useState<number | undefined>(initial?.property.longitude ?? undefined);
 
@@ -285,8 +295,8 @@ export function VerificationWizard({ states, initial }: { states: WizardState[];
               </button>
             ) : null}
           </div>
-          <Button type="submit" disabled={pending}>
-            Save and continue
+          <Button type="submit" loading={pending}>
+            {pending ? "Saving…" : "Save and continue"}
           </Button>
         </form>
       ) : null}
@@ -334,11 +344,11 @@ export function VerificationWizard({ states, initial }: { states: WizardState[];
             ) : null}
           </div>
           <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={() => setStep(1)}>
+            <Button type="button" variant="outline" disabled={pending} onClick={() => setStep(1)}>
               Back
             </Button>
-            <Button type="submit" disabled={pending}>
-              Save and continue
+            <Button type="submit" loading={pending}>
+              {pending ? "Saving…" : "Save and continue"}
             </Button>
           </div>
         </form>
@@ -431,11 +441,11 @@ export function VerificationWizard({ states, initial }: { states: WizardState[];
             Add another document
           </button>
           <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={() => setStep(2)}>
+            <Button type="button" variant="outline" disabled={pending} onClick={() => setStep(2)}>
               Back
             </Button>
-            <Button type="submit" disabled={pending}>
-              Save and continue
+            <Button type="submit" loading={pending}>
+              {pending ? "Saving…" : "Save and continue"}
             </Button>
           </div>
         </form>
@@ -453,28 +463,42 @@ export function VerificationWizard({ states, initial }: { states: WizardState[];
                   className="mt-2 block w-full text-sm"
                   type="file"
                   accept="application/pdf,image/jpeg,image/png"
+                  disabled={pending}
                   onChange={async (event) => {
                     const file = event.target.files?.[0];
                     event.target.value = "";
                     if (!file || !document.id) return;
                     setPending(true);
+                    setUploadingId(document.id);
                     setError("");
-                    const body = new FormData();
-                    body.set("file", file);
-                    body.set("titleDocumentId", document.id);
-                    const response = await fetch("/api/uploads", { method: "POST", body });
-                    const payload = (await response.json()) as { error?: string; file?: DocDraft["files"][number] };
-                    setPending(false);
-                    if (!response.ok || !payload.file) {
-                      setError(payload.error || "Upload failed");
-                      return;
+                    try {
+                      const body = new FormData();
+                      body.set("file", file);
+                      body.set("titleDocumentId", document.id);
+                      const response = await fetch("/api/uploads", { method: "POST", body });
+                      const payload = (await response.json()) as { error?: string; file?: DocDraft["files"][number] };
+                      if (!response.ok || !payload.file) {
+                        setError(payload.error || "Upload failed");
+                        return;
+                      }
+                      setDocuments((current) =>
+                        current.map((item) => (item.id === document.id ? { ...item, files: [payload.file!] } : item)),
+                      );
+                    } catch {
+                      setError("Upload failed. Check your connection and try again.");
+                    } finally {
+                      setPending(false);
+                      setUploadingId(null);
                     }
-                    setDocuments((current) =>
-                      current.map((item) => (item.id === document.id ? { ...item, files: [payload.file!] } : item)),
-                    );
                   }}
                 />
               </label>
+              {uploadingId === document.id ? (
+                <p role="status" className="flex items-center gap-2 text-sm text-ink-2">
+                  <Spinner className="text-seal" />
+                  Uploading, please wait…
+                </p>
+              ) : null}
               <ul className="space-y-2 text-sm">
                 {document.files.map((file) => (
                   <li key={file.id} className="flex items-center justify-between gap-3">
@@ -546,11 +570,11 @@ export function VerificationWizard({ states, initial }: { states: WizardState[];
             ))}
           </div>
           <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={() => setStep(4)}>
+            <Button type="button" variant="outline" disabled={pending} onClick={() => setStep(4)}>
               Back
             </Button>
-            <Button type="submit" disabled={pending}>
-              Continue
+            <Button type="submit" loading={pending}>
+              {pending ? "Saving…" : "Continue"}
             </Button>
           </div>
         </form>
@@ -567,7 +591,11 @@ export function VerificationWizard({ states, initial }: { states: WizardState[];
               return;
             }
             const result = await run(() => submitCaseAction(parsed.data));
-            if (result && "caseId" in result && result.caseId) router.push(`/dashboard/verifications/${result.caseId}`);
+            if (result && "caseId" in result && result.caseId) {
+              // run() has cleared the spinner; turn it back on until the case page has loaded.
+              setPending(true);
+              router.push(`/dashboard/verifications/${result.caseId}`);
+            }
           }}
         >
           <div className="rounded-lg border border-line bg-surface p-4 text-sm">
@@ -584,14 +612,14 @@ export function VerificationWizard({ states, initial }: { states: WizardState[];
           </p>
           <label className="flex items-start gap-3 text-sm">
             <Checkbox checked={consent} onCheckedChange={(value) => setConsent(value === true)} />
-            <span>I agree that TitleCheck may store these documents and personal details to carry out this search, as described in the privacy policy.</span>
+            <span>I agree that VerifyTitle Nigeria may store these documents and personal details to carry out this search, as described in the privacy policy.</span>
           </label>
           <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={() => setStep(5)}>
+            <Button type="button" variant="outline" disabled={pending} onClick={() => setStep(5)}>
               Back
             </Button>
-            <Button type="submit" disabled={pending}>
-              Submit request
+            <Button type="submit" loading={pending}>
+              {pending ? "Submitting…" : "Submit request"}
             </Button>
           </div>
         </form>

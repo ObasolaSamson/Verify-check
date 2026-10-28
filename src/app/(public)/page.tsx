@@ -14,7 +14,7 @@ export default async function HomePage() {
           <h1 className="mt-3 font-serif text-5xl leading-tight text-ink sm:text-6xl">Check the title before you pay.</h1>
           <p className="mt-5 max-w-xl text-lg text-ink-2">
             Fake certificates of occupancy, missing Governor's Consent, and land under government acquisition still change hands in Nigeria.
-            TitleCheck sends field officers to the registry, surveyors to chart the plan, and a lawyer to write the opinion.
+            VerifyTitle Nigeria sends field officers to the registry, surveyors to chart the plan, and a lawyer to write the opinion.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/register" className="rounded-md bg-seal px-4 py-3 text-sm font-semibold text-paper">

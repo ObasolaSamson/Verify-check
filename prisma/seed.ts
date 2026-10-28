@@ -1,4 +1,4 @@
-import { PrismaClient, type CaseStatus, type CheckType, type RoleKey, type TitleDocumentType } from "@prisma/client";
+import { PrismaClient, type CaseStatus, type CheckType, type RoleKey, type State, type TitleDocumentType } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -173,7 +173,11 @@ const USERS: { key: RoleKey; name: string; email: string; phone: string }[] = [
 
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-async function main() {
+/**
+ * Reference data the app cannot run without: roles, Lagos and its LGAs, registries, tiers and fees.
+ * Safe for production. Idempotent: running it again updates rows instead of duplicating them.
+ */
+async function seedReference() {
   for (const [key, label] of Object.entries(ROLE_LABELS) as [RoleKey, string][]) {
     await prisma.role.upsert({ where: { key }, update: { label }, create: { key, label } });
   }
@@ -251,6 +255,15 @@ async function main() {
     });
   }
 
+  console.info("Seeded reference data: roles, Lagos, 3 inactive states, 3 tiers and fees.");
+  return { lagos, tierIds };
+}
+
+/**
+ * Demo accounts and fake cases for local development only.
+ * Never run this against a live database: the accounts are known and include an admin.
+ */
+async function seedDemo({ lagos, tierIds }: { lagos: State; tierIds: Record<string, string> }) {
   const userIds: Partial<Record<RoleKey, string>> = {};
   for (const item of USERS) {
     const role = await prisma.role.findUniqueOrThrow({ where: { key: item.key } });
@@ -384,7 +397,30 @@ async function main() {
     }
   }
 
-  console.info("Seeded Lagos, 3 inactive states, 3 tiers, 6 users, and 5 sample cases.");
+  console.info("Seeded demo data: 6 users and 5 sample cases.");
+}
+
+function isLocalDatabase() {
+  const url = process.env.DATABASE_URL;
+  if (!url) return false;
+  try {
+    return ["127.0.0.1", "localhost", "::1", "[::1]"].includes(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+async function main() {
+  const referenceOnly = process.argv.includes("--reference-only");
+  if (!referenceOnly && !isLocalDatabase() && process.env.ALLOW_DEMO_SEED !== "1") {
+    throw new Error(
+      "Refusing to add demo accounts to a database that is not on this machine. " +
+        "Use `npm run db:seed:prod` for real reference data only.",
+    );
+  }
+
+  const reference = await seedReference();
+  if (!referenceOnly) await seedDemo(reference);
 }
 
 main()

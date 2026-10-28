@@ -2,6 +2,7 @@ import { createHash, randomInt } from "crypto";
 import type { OtpChannel } from "@prisma/client";
 import { hashOtp, safeEqual } from "@/lib/crypto";
 import { prisma } from "@/server/db";
+import { sendEmail } from "@/server/email";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -74,40 +75,16 @@ export async function peekChallenge(destination: string, code: string) {
 }
 
 export async function deliverOtp(input: { channel: OtpChannel; destination: string; code: string; name?: string | null }) {
-  const text = `Your TitleCheck code is ${input.code}. It expires in 10 minutes.`;
-  if (input.channel === "EMAIL") return sendEmail(input.destination, "Your TitleCheck code", text);
+  const text = `Your VerifyTitle Nigeria code is ${input.code}. It expires in 10 minutes.`;
+  if (input.channel === "EMAIL") return sendEmail({ to: input.destination, subject: "Your VerifyTitle Nigeria code", text });
   return sendSms(input.destination, text);
-}
-
-async function sendEmail(to: string, subject: string, text: string) {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) {
-    if (process.env.NODE_ENV !== "production") {
-      console.info(`[titlecheck email] to=${to} subject=${subject}\n${text}`);
-      return { ok: true, providerMessageId: "dev-log" };
-    }
-    return { ok: false, error: "Email provider is not configured" };
-  }
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: process.env.EMAIL_FROM || "TitleCheck <noreply@titlecheck.ng>",
-      to,
-      subject,
-      text,
-    }),
-  });
-  if (!response.ok) return { ok: false, error: await response.text() };
-  const body = (await response.json()) as { id?: string };
-  return { ok: true, providerMessageId: body.id };
 }
 
 async function sendSms(to: string, sms: string) {
   const key = process.env.TERMII_API_KEY;
   if (!key) {
     if (process.env.NODE_ENV !== "production") {
-      console.info(`[titlecheck sms] to=${to}\n${sms}`);
+      console.info(`[verifytitle sms] to=${to}\n${sms}`);
       return { ok: true, providerMessageId: "dev-log" };
     }
     return { ok: false, error: "SMS provider is not configured" };
@@ -118,7 +95,7 @@ async function sendSms(to: string, sms: string) {
     body: JSON.stringify({
       api_key: key,
       to: to.replace("+", ""),
-      from: process.env.TERMII_SENDER_ID || "TitleCheck",
+      from: process.env.TERMII_SENDER_ID || "VerifyTitle",
       sms,
       type: "plain",
       channel: "generic",

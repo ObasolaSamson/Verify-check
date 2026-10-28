@@ -61,7 +61,7 @@ export async function savePropertyStep(
 ) {
   await assertLga(input.stateId, input.lgaId);
   const state = await prisma.state.findUnique({ where: { id: input.stateId } });
-  if (!state?.active) throw new CaseError("TitleCheck is not taking requests in that state yet");
+  if (!state?.active) throw new CaseError("VerifyTitle Nigeria is not taking requests in that state yet");
 
   const propertyData = {
     name: input.name || null,

@@ -12,7 +12,7 @@ export async function SiteHeader() {
     <header className="border-b border-line bg-surface">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
         <Link href="/" className="font-serif text-xl tracking-tight text-seal-dark">
-          TitleCheck
+          VerifyTitle Nigeria
         </Link>
         <nav className="flex items-center gap-4 text-sm font-semibold">
           <Link href="/pricing" className="text-ink-2 hover:text-ink">

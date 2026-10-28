@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { signOutAction } from "@/features/auth/actions";
 
 export function AppShell({
@@ -17,13 +18,13 @@ export function AppShell({
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
-            <Link href="/" className="font-serif text-xl text-seal-dark">TitleCheck</Link>
+            <Link href="/" className="font-serif text-xl text-seal-dark">VerifyTitle Nigeria</Link>
             <span className="text-xs font-semibold uppercase tracking-wide text-ink-3">{title}</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <span className="hidden text-ink-2 sm:inline">{user.name ?? user.email}</span>
             <form action={signOutAction}>
-              <button type="submit" className="font-semibold text-seal">Sign out</button>
+              <SubmitButton plain pendingText="Signing out…" className="font-semibold text-seal">Sign out</SubmitButton>
             </form>
           </div>
         </div>

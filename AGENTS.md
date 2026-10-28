@@ -8,4 +8,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-TitleCheck Phase 1. Account registration is free. Paystack runs only from a submitted verification case.
+VerifyTitle Nigeria Phase 1. Account registration is free. Paystack runs only from a submitted verification case.
